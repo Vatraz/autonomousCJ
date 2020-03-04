@@ -4,12 +4,19 @@ import cv2
 import numpy as np
 import statistics
 import time
+import keyboard
 
-keyboard = Controller()
+from lane_detector import select_lines, lane, params, calculate_intersection
+
+kbrd = Controller()
 
 windowX = 800
 windowY = 600
-horizonY = windowY/2
+horizonY = int(windowY/2)
+aimX = int(windowX/2)
+thresholdX = 20
+old_y = 0
+
 
 def region_of_interest(edges):
     height, width = edges.shape
@@ -29,68 +36,23 @@ def region_of_interest(edges):
     cropped_edges = cv2.bitwise_and(edges, mask)
     return cropped_edges
 
-def keypress():
-    keyboard.press('a')
-    time.sleep(0.01)
-    keyboard.release('a')
 
 
-def params(x1, y1, x2, y2):
-    y1 = windowY - y1
-    y2 = windowY - y2
-
-    # Slope
-    dx = x2 - x1
-    dy = y2 - y1
-    if dx == 0:
-        dx = 1 # 1px
-
-    slope = dy/dx
-
-    # Interception
-    interception = y1 - slope*x1
-
-    return slope, interception
-
-
-def select_lines(lines):
-    slope_min = 0.2
-    selected_left = []
-    selected_right = []
-
-    for line in lines:
-        coords = line[0]
-        slope, _ = params(*coords)
-
-        if slope > slope_min:
-            selected_left.append(line)
-        elif slope < -slope_min:
-            # print(slope)
-            selected_right.append(line)
-
-    return selected_left, selected_right
-
-
-def calculate_lane(lines):
-    if not lines:
-        return [0, 0, 0, 0]
-    slopes = []
-    interceptions = []
-    for line in lines:
-        slope, interception = params(*line[0])
-        slopes.append(slope)
-        interceptions.append(interception)
-    a = statistics.mean(slopes)
-    b = statistics.mean(interceptions)
+def calculate_lane_coords(a, b):
+    if a == 0:
+        return [0,0,0,0]
     y1 = int(windowY - horizonY)
     x1 = int((y1 - b)/a)
-    y2 = 0
+    y2 = windowY
     x2 = int((y2 - b)/a)
 
-    coords = [x1, windowY-y1, x2, windowY-y2]
-    return coords
+    return [x1, y1, x2, y2]
 
-def draw_lines(image, hough):
+def draw_lines(image, lane_l_coords, lane_r_coords, point):
+    cv2.line(image, (int(windowX/2), 0), (int(aimX), windowY), [255, 125, 0], 2)
+    cv2.line(image, (int(aimX + thresholdX), 0), (int(aimX + thresholdX), windowY), [255, 0, 220], 1)
+    cv2.line(image, (int(aimX - thresholdX), 0), (int(aimX - thresholdX), windowY), [255, 0, 220], 1)
+
     # try:
     #     for line in hough:
     #         print(line)
@@ -99,48 +61,73 @@ def draw_lines(image, hough):
     #         cv2.line(image, (coords[0], coords[1]), (coords[2], coords[3]), [255,225,3], 3)
     # except:
     #     pass
-    if type(hough) is not np.ndarray:
-        return
-    lines_l, lines_r = select_lines(hough)
-    for line in lines_l:
-        coords = line[0]
-        # cv2.line(image, (coords[0], coords[1]), (coords[2], coords[3]), [0, 225, 0], 3)
-        # print("LEFT", coords)
-    for line in lines_r:
-        coords = line[0]
-        # cv2.line(image, (coords[0], coords[1]), (coords[2], coords[3]), [255, 0, 0], 3)
-        # print("RIGHT", coords)
-
-    coords = calculate_lane(lines_l)
-    cv2.line(image, (coords[0], coords[1]), (coords[2], coords[3]), [0, 225, 0], 3)
-
-    coords = calculate_lane(lines_r)
-    cv2.line(image, (coords[0], coords[1]), (coords[2], coords[3]), [255, 0, 0], 3)
 
 
-time_last = time.time()
-while True:
-    # keypress()
+    # for line in lines_l:
+    #     coords = line[0]
+    #     # cv2.line(image, (coords[0], coords[1]), (coords[2], coords[3]), [0, 225, 0], 3)
+    #     # print("LEFT", coords)
+    # for line in lines_r:
+    #     coords = line[0]
+    #     # cv2.line(image, (coords[0], coords[1]), (coords[2], coords[3]), [255, 0, 0], 3)
+    #     # print("RIGHT", coords)
 
-    prt_scr = np.array(ImageGrab.grab(bbox=(0, 0, 800, 600)))
-    # prt_scr = cv2.cvtColor(prt_scr, cv2.COLOR_BGR2GRAY)
-    prt_scr = cv2.GaussianBlur(prt_scr, (5, 5), 0)
+    coords_l = lane_l_coords
+    cv2.line(image, (coords_l[0], coords_l[1]), (coords_l[2], coords_l[3]), [0, 225, 0], 3)
 
-    # print("took ", time.time() - time_last)
-    # time_last = time.time()
+    coords_r = lane_r_coords
+    cv2.line(image, (coords_r[0], coords_r[1]), (coords_r[2], coords_r[3]), [255, 0, 0], 3)
 
-    prt_edges = cv2.Canny(prt_scr, 50, 100)
 
-    # CROP
-    prt_crop = region_of_interest(prt_edges)
+    cv2.line(image, (aimX, point[1]), (point[0], point[1]), [0, 0, 225], 3)
 
-    # HOUGH
-    hough = cv2.HoughLinesP(prt_crop, 1, np.pi / 180, 100, minLineLength=200, maxLineGap=50)
-    draw_lines(prt_scr, hough)
 
-    cv2.imshow("GTA SA UDA CI SIE CJ", cv2.cvtColor(prt_scr, cv2.COLOR_BGR2RGB))
 
-    if cv2.waitKey(25) & 0xFF == ord('q'):
-        cv2.destroyAllWindows()
-        break
+
+if __name__ == '__main__':
+    point = [0, 0]
+    keyboard.wait('g')
+    while True:
+        # keypress()
+        # if keyboard.read_key() == 'p':
+        #     break
+        prt_scr = np.array(ImageGrab.grab(bbox=(0, 0, 800, 600)))
+        # prt_scr = cv2.cvtColor(prt_scr, cv2.COLOR_BGR2GRAY)
+        prt_blur = cv2.GaussianBlur(prt_scr, (5, 5), 0)
+
+        prt_edges = cv2.Canny(prt_blur, 50, 100)
+        # CROP ROI
+        prt_crop = region_of_interest(prt_edges)
+        # HOUGH
+        hough = cv2.HoughLinesP(prt_crop, 1, np.pi / 180, 100, minLineLength=100, maxLineGap=50)
+
+        if type(hough) is not np.ndarray:
+            continue
+
+        lines_l, lines_r = select_lines(hough)
+        lane_l = lane(lines_l)
+        lane_r = lane(lines_r)
+        point = calculate_intersection(lane_l['a'], lane_l['b'], lane_r['a'], lane_r['b'], point[1]) or point
+
+        coords_l = calculate_lane_coords(lane_l['a'], lane_l['b'])
+        coords_r = calculate_lane_coords( lane_r['a'], lane_r['b'])
+        old_y = point[1]
+
+        offset = aimX - point[0] if point[0] != 0 else 0
+        kbrd.press('w')
+        if offset > thresholdX:
+            kbrd.release(Key.right)
+            kbrd.press(Key.left)
+        if offset < -thresholdX:
+            kbrd.release(Key.left)
+            kbrd.press(Key.right)
+        print(offset)
+
+        draw_lines(prt_scr, coords_l, coords_r, point)
+
+        cv2.imshow("GTA SA UDA CI SIE CJ", cv2.cvtColor(prt_scr, cv2.COLOR_BGR2RGB))
+
+        if cv2.waitKey(25) & 0xFF == ord('q'):
+            cv2.destroyAllWindows()
+            break
 
