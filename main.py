@@ -1,4 +1,5 @@
-from pynput.keyboard import Key, Controller
+import threading
+
 from PIL import ImageGrab
 import cv2
 import numpy as np
@@ -6,20 +7,19 @@ import statistics
 import time
 import keyboard
 
-from lane_detector import select_lines, lane, params, calculate_intersection
-
-kbrd = Controller()
+from lane_detector import filter_lines, lane, params, calculate_lanes_intersection, calculate_intersection_Y
 
 windowX = 800
 windowY = 600
 horizonY = int(windowY/2)
 aimX = int(windowX/2)
 thresholdX = 20
-old_y = 0
 
+forward = 'w'
+direction = None
+direction_pow = 1
 
 def region_of_interest(edges):
-    height, width = edges.shape
     mask = np.zeros_like(edges)
 
     # only focus bottom half of the screen
@@ -37,9 +37,8 @@ def region_of_interest(edges):
     return cropped_edges
 
 
-
 def calculate_lane_coords(a, b):
-    if a == 0:
+    if not a or not b:
         return [0,0,0,0]
     y1 = int(windowY - horizonY)
     x1 = int((y1 - b)/a)
@@ -66,31 +65,53 @@ def draw_lines(image, lane_l_coords, lane_r_coords, point):
     # for line in lines_l:
     #     coords = line[0]
     #     # cv2.line(image, (coords[0], coords[1]), (coords[2], coords[3]), [0, 225, 0], 3)
-    #     # print("LEFT", coords)
+    #     # print("LEFT", coords)dwd
     # for line in lines_r:
     #     coords = line[0]
     #     # cv2.line(image, (coords[0], coords[1]), (coords[2], coords[3]), [255, 0, 0], 3)
     #     # print("RIGHT", coords)
 
     coords_l = lane_l_coords
-    cv2.line(image, (coords_l[0], coords_l[1]), (coords_l[2], coords_l[3]), [0, 225, 0], 3)
+    cv2.line(image, (coords_l[0], coords_l[1]), (coords_l[2], coords_l[3]), [0, 225, 0], 5)
 
     coords_r = lane_r_coords
-    cv2.line(image, (coords_r[0], coords_r[1]), (coords_r[2], coords_r[3]), [255, 0, 0], 3)
+    cv2.line(image, (coords_r[0], coords_r[1]), (coords_r[2], coords_r[3]), [255, 0, 0], 5)
 
 
     cv2.line(image, (aimX, point[1]), (point[0], point[1]), [0, 0, 225], 3)
 
 
+def accelerate_thread():
+    while True:
+        key = forward
+        keyboard.press(key)
+        time.sleep(0.02)
+        keyboard.release(key)
+        time.sleep(0.02)
+
+
+def control_thread():
+    while True:
+        key = direction
+        if not key:
+            time.sleep(0.01)
+            continue
+        keyboard.press(key)
+        time.sleep(0.02)
+        keyboard.release(key)
+        time.sleep(0.04/direction_pow)
 
 
 if __name__ == '__main__':
-    point = [0, 0]
+    point = [aimX, horizonY]
     keyboard.wait('g')
+    # t_forward = threading.Thread(target=accelerate_thread)
+    # t_forward.start()
+    #
+    # t_control = threading.Thread(target=steering_thread)
+    # t_control.start()
     while True:
-        # keypress()
-        # if keyboard.read_key() == 'p':
-        #     break
+
         prt_scr = np.array(ImageGrab.grab(bbox=(0, 0, 800, 600)))
         # prt_scr = cv2.cvtColor(prt_scr, cv2.COLOR_BGR2GRAY)
         prt_blur = cv2.GaussianBlur(prt_scr, (5, 5), 0)
@@ -99,35 +120,58 @@ if __name__ == '__main__':
         # CROP ROI
         prt_crop = region_of_interest(prt_edges)
         # HOUGH
-        hough = cv2.HoughLinesP(prt_crop, 1, np.pi / 180, 100, minLineLength=100, maxLineGap=50)
+        hough = cv2.HoughLinesP(prt_crop, 1, np.pi / 180, 100, minLineLength=150, maxLineGap=70)
 
         if type(hough) is not np.ndarray:
             continue
 
-        lines_l, lines_r = select_lines(hough)
+        lines_l, lines_r = filter_lines(hough)
         lane_l = lane(lines_l)
         lane_r = lane(lines_r)
-        point = calculate_intersection(lane_l['a'], lane_l['b'], lane_r['a'], lane_r['b'], point[1]) or point
+        a_l, b_l = lane_l['a'], lane_l['b']
+        a_r, b_r = lane_r['a'], lane_r['b']
 
-        coords_l = calculate_lane_coords(lane_l['a'], lane_l['b'])
-        coords_r = calculate_lane_coords( lane_r['a'], lane_r['b'])
-        old_y = point[1]
+        if a_r and a_l and abs(calculate_intersection_Y(a_r, b_r, windowY)
+                               - calculate_intersection_Y(a_l, b_l, windowY)) < windowX / 2:
+            a_r = a_l = b_l = b_r = None
 
-        offset = aimX - point[0] if point[0] != 0 else 0
-        kbrd.press('w')
-        if offset > thresholdX:
-            kbrd.release(Key.right)
-            kbrd.press(Key.left)
-        if offset < -thresholdX:
-            kbrd.release(Key.left)
-            kbrd.press(Key.right)
-        print(offset)
+        point_candidate = calculate_lanes_intersection(a_l, b_l, a_r, b_r, point[1])
+        if point_candidate and point_candidate[1] < horizonY*1.5:
+            point = point_candidate
+
+        if a_l:
+            if a_l < -0.65 or calculate_intersection_Y(a_l, b_l, windowY) > 100:
+                point[0] += 2*thresholdX
+        if a_r:
+            if a_r > 0.65 or calculate_intersection_Y(a_r, b_r, windowY) < 700:
+                point[0] -= 2*thresholdX
+
+        offset = aimX - point[0]
+
+        if offset > 2*thresholdX:
+            direction = 'a'
+            direction_pow = 2
+        elif offset > thresholdX:
+            direction = 'a'
+            direction_pow = 1
+        elif offset < -2*thresholdX:
+            direction = 'd'
+            direction_pow = 2
+        elif offset < -thresholdX:
+            direction = 'd'
+            direction_pow = 1
+        elif -thresholdX < offset < thresholdX:
+            direction = None
+
+        # print(offset)
+        coords_l = calculate_lane_coords(a_l, b_l)
+        coords_r = calculate_lane_coords( a_r, b_r)
 
         draw_lines(prt_scr, coords_l, coords_r, point)
 
-        cv2.imshow("GTA SA UDA CI SIE CJ", cv2.cvtColor(prt_scr, cv2.COLOR_BGR2RGB))
+        cv2.imshow("UDA CI SIE CJ", cv2.cvtColor(prt_scr, cv2.COLOR_BGR2RGB))
 
-        if cv2.waitKey(25) & 0xFF == ord('q'):
+        if cv2.waitKey(25) & 0xFF == ord('q') or keyboard.is_pressed('u'):
             cv2.destroyAllWindows()
             break
 

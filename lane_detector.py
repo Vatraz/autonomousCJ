@@ -1,31 +1,49 @@
 import statistics
 
-def lane(lines):
+def lane(lines, prev_a=0, prev_b=0):
     if not lines:
-        return {'a':0, 'b':0}
+        return {'a':None, 'b':None}
     slopes = []
     interceptions = []
     for line in lines:
         slope, interception = params(*line[0])
         slopes.append(slope)
         interceptions.append(interception)
-    return {'a':statistics.mean(slopes), 'b':statistics.mean(interceptions)}
+    a = statistics.mean(slopes)
+    b = statistics.mean(interceptions)
+
+    # filter found lanes
+    slopes = list(filter(lambda x: abs(x - a) < 0.1, slopes))
+    interceptions = list(filter(lambda x: abs(x - b) < 100, interceptions))
+    if slopes:
+        a = statistics.mean(slopes)
+    if interceptions:
+        b = statistics.mean(interceptions)
+
+    return {'a': a, 'b':b}
 
 
-def calculate_intersection(a_l, b_l, a_r, b_r, old_y):
-    if a_l == 0 and a_r == 0:
+def calculate_lanes_intersection(a_1, b_1, a_2, b_2, old_y):
+    if not any([a_1, a_2]):
         return None
-    if a_l == 0:
+    if not a_1:
         # print("a_L ZERO", int((old_y - b_r) / a_r), old_y)
-        return int((old_y - b_r) / a_r), old_y
-    if a_r == 0:
+        return [int((old_y - b_2) / a_2), old_y]
+    if not a_2:
         # print("a_L ZERO", int((old_y - b_l) / a_l), old_y)
-        return int((old_y - b_l) / a_l), old_y
+        return [int((old_y - b_1) / a_1), old_y]
 
-    x = (b_r - b_l) / (a_l - a_r)
-    y = a_l * x + b_l
+    x = (b_2 - b_1) / (a_1 - a_2)
+    y = a_1 * x + b_1
     # print("ok", int(x), int(y))
-    return int(x), int(y)
+    return [int(x), int(y)]
+
+
+def calculate_intersection_Y(a, b, Y):
+    if not a or not b:
+        return None
+    x = (Y - b)/a
+    return x
 
 
 def params(x1, y1, x2, y2):
@@ -45,7 +63,8 @@ def params(x1, y1, x2, y2):
 
     return slope, interception
 
-def select_lines(lines):
+
+def filter_lines(lines):
     slope_min = 0.2
     selected_left = []
     selected_right = []
