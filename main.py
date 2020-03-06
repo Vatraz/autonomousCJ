@@ -6,6 +6,8 @@ import numpy as np
 import statistics
 import time
 import keyboard
+import functools
+
 
 from lane_detector import filter_lines, lane, params, calculate_lanes_intersection, calculate_intersection_Y
 
@@ -102,6 +104,57 @@ def control_thread():
         time.sleep(0.04/direction_pow)
 
 
+def find_map(image):
+    image = image[int(windowY*3/4):windowY-20, 20:int(windowX/4)]
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray_blur = cv2.medianBlur(gray, 5)
+    gray_blur = cv2.medianBlur(gray_blur, 5)
+    _, thresh_blur = cv2.threshold(gray_blur, 2, 255, cv2.THRESH_BINARY_INV)
+
+    top = bottom = None
+    left = windowX
+    right = 0
+
+    for num, row in enumerate(thresh_blur):
+        non_zeros = np.nonzero(row != 0)
+        if non_zeros[0].size == 0:
+            continue
+        if not top:
+            top = num
+
+        bottom = num
+        left = left if left < non_zeros[0][0] else non_zeros[0][0]
+        right = right if right > non_zeros[0][-1] else non_zeros[0][-1]
+
+
+
+
+    # gray = cv2.medianBlur(gray, 5)
+    # gray = cv2.medianBlur(gray, 5)
+    # gray = cv2.Canny(gray, 50, 100)
+
+
+    ret, thresh = cv2.threshold(gray_blur, 2, 255, cv2.THRESH_BINARY_INV)
+
+    # circles = cv2.HoughCircles(thresh, cv2.HOUGH_GRADIENT,1,20, param1=50,param2=30,minRadius=20,maxRadius=100)
+    #
+    # # # ensure at least some circles were found
+    # if circles is not None:
+    #     # convert the (x, y) coordinates and radius of the circles to integers
+    #     circles = np.round(circles[0, :]).astype("int")
+    #     # loop over the (x, y) coordinates and radius of the circles
+    #     (x, y, r) = functools.reduce(lambda a, b: a if a[2] > b[2] else b, circles)
+    #
+    #         # corresponding to the center of the circle
+    #     cv2.circle(gray, (x, y), r, 100, 4)
+    #     cv2.rectangle(gray, (x - 5, y - 5), (x + 5, y + 5), 100, -1)
+    x, y = left + int((right - left)/2), top + int((bottom - top)/2)
+    print(x, '____', y)
+    cv2.rectangle(thresh, (x - 5, y - 5), (x + 5, y + 5), 100, -1)
+
+    return thresh
+
+
 if __name__ == '__main__':
     point = [aimX, horizonY]
     keyboard.wait('g')
@@ -112,64 +165,64 @@ if __name__ == '__main__':
     # t_control.start()
     while True:
 
-        prt_scr = np.array(ImageGrab.grab(bbox=(0, 0, 800, 600)))
+        prt_scr = np.array(ImageGrab.grab(bbox=(0, 30, windowX, 30+windowY)))
         # prt_scr = cv2.cvtColor(prt_scr, cv2.COLOR_BGR2GRAY)
-        prt_blur = cv2.GaussianBlur(prt_scr, (5, 5), 0)
+        # prt_blur = cv2.GaussianBlur(prt_scr, (5, 5), 0)
+        #
+        # prt_edges = cv2.Canny(prt_blur, 50, 100)
+        # # CROP ROI
+        # prt_crop = region_of_interest(prt_edges)
+        # # HOUGH
+        # hough = cv2.HoughLinesP(prt_crop, 1, np.pi / 180, 100, minLineLength=150, maxLineGap=70)
 
-        prt_edges = cv2.Canny(prt_blur, 50, 100)
-        # CROP ROI
-        prt_crop = region_of_interest(prt_edges)
-        # HOUGH
-        hough = cv2.HoughLinesP(prt_crop, 1, np.pi / 180, 100, minLineLength=150, maxLineGap=70)
-
-        if type(hough) is not np.ndarray:
-            continue
-
-        lines_l, lines_r = filter_lines(hough)
-        lane_l = lane(lines_l)
-        lane_r = lane(lines_r)
-        a_l, b_l = lane_l['a'], lane_l['b']
-        a_r, b_r = lane_r['a'], lane_r['b']
-
-        if a_r and a_l and abs(calculate_intersection_Y(a_r, b_r, windowY)
-                               - calculate_intersection_Y(a_l, b_l, windowY)) < windowX / 2:
-            a_r = a_l = b_l = b_r = None
-
-        point_candidate = calculate_lanes_intersection(a_l, b_l, a_r, b_r, point[1])
-        if point_candidate and point_candidate[1] < horizonY*1.5:
-            point = point_candidate
-
-        if a_l:
-            if a_l < -0.65 or calculate_intersection_Y(a_l, b_l, windowY) > 100:
-                point[0] += 2*thresholdX
-        if a_r:
-            if a_r > 0.65 or calculate_intersection_Y(a_r, b_r, windowY) < 700:
-                point[0] -= 2*thresholdX
-
-        offset = aimX - point[0]
-
-        if offset > 2*thresholdX:
-            direction = 'a'
-            direction_pow = 2
-        elif offset > thresholdX:
-            direction = 'a'
-            direction_pow = 1
-        elif offset < -2*thresholdX:
-            direction = 'd'
-            direction_pow = 2
-        elif offset < -thresholdX:
-            direction = 'd'
-            direction_pow = 1
-        elif -thresholdX < offset < thresholdX:
-            direction = None
-
-        # print(offset)
-        coords_l = calculate_lane_coords(a_l, b_l)
-        coords_r = calculate_lane_coords( a_r, b_r)
-
-        draw_lines(prt_scr, coords_l, coords_r, point)
-
-        cv2.imshow("UDA CI SIE CJ", cv2.cvtColor(prt_scr, cv2.COLOR_BGR2RGB))
+        # if type(hough) is not np.ndarray:
+        #     continue
+        #
+        # lines_l, lines_r = filter_lines(hough)
+        # lane_l = lane(lines_l)
+        # lane_r = lane(lines_r)
+        # a_l, b_l = lane_l['a'], lane_l['b']
+        # a_r, b_r = lane_r['a'], lane_r['b']
+        #
+        # if a_r and a_l and abs(calculate_intersection_Y(a_r, b_r, windowY)
+        #                        - calculate_intersection_Y(a_l, b_l, windowY)) < windowX / 2:
+        #     a_r = a_l = b_l = b_r = None
+        #
+        # point_candidate = calculate_lanes_intersection(a_l, b_l, a_r, b_r, point[1])
+        # if point_candidate and point_candidate[1] < horizonY*1.5:
+        #     point = point_candidate
+        #
+        # if a_l:
+        #     if a_l < -0.65 or calculate_intersection_Y(a_l, b_l, windowY) > 100:
+        #         point[0] += 2*thresholdX
+        # if a_r:
+        #     if a_r > 0.65 or calculate_intersection_Y(a_r, b_r, windowY) < 700:
+        #         point[0] -= 2*thresholdX
+        #
+        # offset = aimX - point[0]
+        #
+        # if offset > 2*thresholdX:
+        #     direction = 'a'
+        #     direction_pow = 2
+        # elif offset > thresholdX:
+        #     direction = 'a'
+        #     direction_pow = 1
+        # elif offset < -2*thresholdX:
+        #     direction = 'd'
+        #     direction_pow = 2
+        # elif offset < -thresholdX:
+        #     direction = 'd'
+        #     direction_pow = 1
+        # elif -thresholdX < offset < thresholdX:
+        #     direction = None
+        #
+        # # print(offset)
+        # coords_l = calculate_lane_coords(a_l, b_l)
+        # coords_r = calculate_lane_coords( a_r, b_r)
+        #
+        # draw_lines(prt_scr, coords_l, coords_r, point)
+        img = find_map(prt_scr)
+        cv2.imshow("UDA CI SIE CJ", cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 
         if cv2.waitKey(25) & 0xFF == ord('q') or keyboard.is_pressed('u'):
             cv2.destroyAllWindows()
