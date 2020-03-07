@@ -92,7 +92,7 @@ def control_thread():
         keyboard.press(key)
         time.sleep(0.01*direction_pow)
         keyboard.release(key)
-        time.sleep(0.01)
+        time.sleep(0.02)
 
 
 if __name__ == '__main__':
@@ -103,10 +103,12 @@ if __name__ == '__main__':
 
     t_control = threading.Thread(target=control_thread)
     t_control.start()
+
     minimap = None
     lanes = Lanes((windowX, windowY))
-    minmap_control = False
+    minimap_control = False
     minimap_dif = 0
+
 
     while True:
 
@@ -136,43 +138,42 @@ if __name__ == '__main__':
 
         minimap_direction = minimap.get_direction(prt_scr)
         difference = point[0] - aimX
-
         if lane_l.exist():
             if lane_l.a < -0.65 or lane_l.calculate_intersection_y(windowY) > 100:
-                difference += 2*thresholdX
+                difference += thresholdX
         if lane_r.exist():
             if lane_r.a > 0.65 or lane_r.calculate_intersection_y(windowY) < 700:
-                difference -= 2*thresholdX
+                difference -= thresholdX
 
-        # T junction
+        # if T junction
         if not(lane_l.exist() or lane_r.exist()) and not minimap_direction[1]:
-            print("PROBLEM")
-            if not minmap_control:
+            print("PROBLEM", time.time())
+            if not minimap_control:
                 if minimap_direction[0]:
-                    minimap_dif = -int(1.5*thresholdX)
+                    difference = -3*thresholdX
                 elif minimap_direction[2]:
-                    minimap_dif = 3*thresholdX
-                minmap_control = True
-
-        if minmap_control:
+                    difference = 3*thresholdX
+                minimap_dif = difference
+                minimap_control = True
+        if minimap_control:
             if not (lane_l.exist() or lane_r.exist()):
                 difference = minimap_dif
-            else:
+            elif minimap_direction[2]:
                 minimap_control = False
 
-        if difference > 2*thresholdX:
-            direction = 'd'
-            direction_pow = 2
-        elif difference > thresholdX:
-            direction = 'd'
-            direction_pow = 1
-        elif difference < -2*thresholdX:
-            direction = 'a'
-            direction_pow = 2
-        elif difference < -thresholdX:
-            direction = 'a'
-            direction_pow = 1
-        elif -thresholdX < difference < thresholdX:
+        if abs(difference) > thresholdX:
+            if difference > 0:
+                direction = 'd'
+            else:
+                direction = 'a'
+            power_sw = abs(difference)/thresholdX
+            if power_sw >= 3:
+                direction_pow = 3
+            elif power_sw >= 2:
+                direction_pow = 2
+            else:
+                direction_pow = 1
+        else:
             direction = None
 
         # print(difference)
