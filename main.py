@@ -9,7 +9,7 @@ import keyboard
 import functools
 
 from minimap import Minimap
-from lane_detector import filter_lines, lane, params, calculate_lanes_intersection, calculate_intersection_Y
+from lanes import Lanes
 
 windowX = 800
 windowY = 600
@@ -48,6 +48,7 @@ def calculate_lane_coords(a, b):
     x2 = int((y2 - b)/a)
 
     return [x1, y1, x2, y2]
+
 
 def draw_lines(image, lane_l_coords, lane_r_coords, point):
     cv2.line(image, (int(windowX/2), 0), (int(aimX), windowY), [255, 125, 0], 2)
@@ -104,9 +105,6 @@ def control_thread():
         time.sleep(0.04/direction_pow)
 
 
-
-
-
 if __name__ == '__main__':
     point = [aimX, horizonY]
     keyboard.wait('g')
@@ -116,6 +114,8 @@ if __name__ == '__main__':
     # t_control = threading.Thread(target=steering_thread)
     # t_control.start()
     minimap = None
+    lanes = Lanes((windowX, windowY))
+
     while True:
 
         prt_scr = np.array(ImageGrab.grab(bbox=(0, 30, windowX, windowY+30)))
@@ -128,35 +128,28 @@ if __name__ == '__main__':
 
         # prt_scr = cv2.cvtColor(prt_scr, cv2.COLOR_BGR2GRAY)
         prt_blur = cv2.GaussianBlur(prt_scr, (5, 5), 0)
-
         prt_edges = cv2.Canny(prt_blur, 50, 100)
-        # CROP ROI
         prt_crop = region_of_interest(prt_edges)
-        # HOUGH
         hough = cv2.HoughLinesP(prt_crop, 1, np.pi / 180, 100, minLineLength=150, maxLineGap=70)
 
         if type(hough) is not np.ndarray:
             continue
 
-        lines_l, lines_r = filter_lines(hough)
-        lane_l = lane(lines_l)
-        lane_r = lane(lines_r)
-        a_l, b_l = lane_l['a'], lane_l['b']
-        a_r, b_r = lane_r['a'], lane_r['b']
+        lanes.find_lanes(hough)
 
-        if a_r and a_l and abs(calculate_intersection_Y(a_r, b_r, windowY)
-                               - calculate_intersection_Y(a_l, b_l, windowY)) < windowX / 2:
-            a_r = a_l = b_l = b_r = None
+        a_l, b_l = lanes.lane_l.a, lanes.lane_l.b
+        a_r, b_r = lanes.lane_r.a, lanes.lane_r.b
 
-        point_candidate = calculate_lanes_intersection(a_l, b_l, a_r, b_r, point[1])
+        point_candidate = lanes.calculate_intersection()
+
         if point_candidate and point_candidate[1] < horizonY*1.5:
             point = point_candidate
 
-        if a_l:
-            if a_l < -0.65 or calculate_intersection_Y(a_l, b_l, windowY) > 100:
+        if lanes.lane_l.exist:
+            if a_l < -0.65 or lanes.lane_l.calculate_intersection_Y(windowY) > 100:
                 point[0] += 2*thresholdX
-        if a_r:
-            if a_r > 0.65 or calculate_intersection_Y(a_r, b_r, windowY) < 700:
+        if lanes.lane_r.exist:
+            if a_r > 0.65 or lanes.lane_r.calculate_intersection_Y(windowY) < 700:
                 point[0] -= 2*thresholdX
 
         offset = aimX - point[0]
