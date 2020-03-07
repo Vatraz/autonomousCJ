@@ -52,7 +52,7 @@ class Minimap:
     def img_crop(self, image):
         return image[self.rectangle[0][1]:self.rectangle[1][1], self.rectangle[0][0]:self.rectangle[1][0]]
 
-    def show_map(self, img):
+    def draw(self, img):
         img = self.img_crop(img)
         # img = self.process_image(img)
         x = self.x

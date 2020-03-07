@@ -21,6 +21,7 @@ forward = 'w'
 direction = None
 direction_pow = 1
 
+
 def region_of_interest(edges):
     mask = np.zeros_like(edges)
 
@@ -39,18 +40,7 @@ def region_of_interest(edges):
     return cropped_edges
 
 
-def calculate_lane_coords(a, b):
-    if not a or not b:
-        return [0,0,0,0]
-    y1 = int(windowY - horizonY)
-    x1 = int((y1 - b)/a)
-    y2 = windowY
-    x2 = int((y2 - b)/a)
-
-    return [x1, y1, x2, y2]
-
-
-def draw_lines(image, lane_l_coords, lane_r_coords, point):
+def draw_lines(image, lane_l_coords, lane_r_coords, difference, y):
     cv2.line(image, (int(windowX/2), 0), (int(aimX), windowY), [255, 125, 0], 2)
     cv2.line(image, (int(aimX + thresholdX), 0), (int(aimX + thresholdX), windowY), [255, 0, 220], 1)
     cv2.line(image, (int(aimX - thresholdX), 0), (int(aimX - thresholdX), windowY), [255, 0, 220], 1)
@@ -81,7 +71,7 @@ def draw_lines(image, lane_l_coords, lane_r_coords, point):
     cv2.line(image, (coords_r[0], coords_r[1]), (coords_r[2], coords_r[3]), [255, 0, 0], 5)
 
 
-    cv2.line(image, (aimX, point[1]), (point[0], point[1]), [0, 0, 225], 3)
+    cv2.line(image, (aimX, y), (aimX+difference, y), [0, 0, 225], 3)
 
 
 def accelerate_thread():
@@ -90,7 +80,7 @@ def accelerate_thread():
         keyboard.press(key)
         time.sleep(0.02)
         keyboard.release(key)
-        time.sleep(0.02)
+        time.sleep(0.01)
 
 
 def control_thread():
@@ -100,9 +90,9 @@ def control_thread():
             time.sleep(0.01)
             continue
         keyboard.press(key)
-        time.sleep(0.02)
+        time.sleep(0.01*direction_pow)
         keyboard.release(key)
-        time.sleep(0.04/direction_pow)
+        time.sleep(0.01)
 
 
 if __name__ == '__main__':
@@ -110,20 +100,22 @@ if __name__ == '__main__':
     keyboard.wait('g')
     # t_forward = threading.Thread(target=accelerate_thread)
     # t_forward.start()
-    #
-    # t_control = threading.Thread(target=steering_thread)
-    # t_control.start()
+
+    t_control = threading.Thread(target=control_thread)
+    t_control.start()
     minimap = None
     lanes = Lanes((windowX, windowY))
+    minmap_control = False
+    minimap_dif = 0
 
     while True:
 
         prt_scr = np.array(ImageGrab.grab(bbox=(0, 30, windowX, windowY+30)))
         if not minimap:
             minimap = Minimap(prt_scr, ((20, int(windowY * 3 / 4)), (int(windowX / 4), windowY - 20)))
-            minimap.show_map(prt_scr)
+            minimap.draw(prt_scr)
         else:
-            minimap.show_map(prt_scr)
+            minimap.draw(prt_scr)
             minimap.get_direction(prt_scr)
 
         # prt_scr = cv2.cvtColor(prt_scr, cv2.COLOR_BGR2GRAY)
@@ -135,45 +127,59 @@ if __name__ == '__main__':
         if type(hough) is not np.ndarray:
             continue
 
-        lanes.find_lanes(hough)
-
-        a_l, b_l = lanes.lane_l.a, lanes.lane_l.b
-        a_r, b_r = lanes.lane_r.a, lanes.lane_r.b
+        lanes.update_lanes(hough)
+        lane_l, lane_r = lanes.get_lanes()
 
         point_candidate = lanes.calculate_intersection()
-
         if point_candidate and point_candidate[1] < horizonY*1.5:
             point = point_candidate
 
-        if lanes.lane_l.exist:
-            if a_l < -0.65 or lanes.lane_l.calculate_intersection_Y(windowY) > 100:
-                point[0] += 2*thresholdX
-        if lanes.lane_r.exist:
-            if a_r > 0.65 or lanes.lane_r.calculate_intersection_Y(windowY) < 700:
-                point[0] -= 2*thresholdX
+        minimap_direction = minimap.get_direction(prt_scr)
+        difference = point[0] - aimX
 
-        offset = aimX - point[0]
+        if lane_l.exist():
+            if lane_l.a < -0.65 or lane_l.calculate_intersection_y(windowY) > 100:
+                difference += 2*thresholdX
+        if lane_r.exist():
+            if lane_r.a > 0.65 or lane_r.calculate_intersection_y(windowY) < 700:
+                difference -= 2*thresholdX
 
-        if offset > 2*thresholdX:
-            direction = 'a'
-            direction_pow = 2
-        elif offset > thresholdX:
-            direction = 'a'
-            direction_pow = 1
-        elif offset < -2*thresholdX:
+        # T junction
+        if not(lane_l.exist() or lane_r.exist()) and not minimap_direction[1]:
+            print("PROBLEM")
+            if not minmap_control:
+                if minimap_direction[0]:
+                    minimap_dif = -int(1.5*thresholdX)
+                elif minimap_direction[2]:
+                    minimap_dif = 3*thresholdX
+                minmap_control = True
+
+        if minmap_control:
+            if not (lane_l.exist() or lane_r.exist()):
+                difference = minimap_dif
+            else:
+                minimap_control = False
+
+        if difference > 2*thresholdX:
             direction = 'd'
             direction_pow = 2
-        elif offset < -thresholdX:
+        elif difference > thresholdX:
             direction = 'd'
             direction_pow = 1
-        elif -thresholdX < offset < thresholdX:
+        elif difference < -2*thresholdX:
+            direction = 'a'
+            direction_pow = 2
+        elif difference < -thresholdX:
+            direction = 'a'
+            direction_pow = 1
+        elif -thresholdX < difference < thresholdX:
             direction = None
 
-        # print(offset)
-        coords_l = calculate_lane_coords(a_l, b_l)
-        coords_r = calculate_lane_coords( a_r, b_r)
+        # print(difference)
+        coords_l = lane_l.calculate_coords(windowY, horizonY)
+        coords_r = lane_r.calculate_coords(windowY, horizonY)
 
-        draw_lines(prt_scr, coords_l, coords_r, point)
+        draw_lines(prt_scr, coords_l, coords_r, difference, point[1])
         cv2.imshow("UDA CI SIE CJ", cv2.cvtColor(prt_scr, cv2.COLOR_BGR2RGB))
 
         if cv2.waitKey(25) & 0xFF == ord('q') or keyboard.is_pressed('u'):

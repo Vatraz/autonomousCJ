@@ -1,14 +1,14 @@
 import statistics
-
+import cv2
 
 class Lanes:
     def __init__(self, window):
-        self.lane_l = self.lane_r = None
-        self.window = window
-        self.point_intersection = [int(window[0]/2), int(window[1]/2)]
+        self._lane_l = self._lane_r = None
+        self._window = window
+        self._point_intersection = [int(window[0]/2), int(window[1]/2)]
         pass
 
-    def split_lines(self, lines):
+    def _split_lines(self, lines):
         slope_min = 0.2
         selected_left = []
         selected_right = []
@@ -23,42 +23,46 @@ class Lanes:
 
         return selected_left, selected_right
 
-    def find_lanes(self, lines):
-        lines_l, lines_r = self.split_lines(lines)
-        self.lane_l = Lane(lines_l)
-        self.lane_r = Lane(lines_r)
-        self.check_if_valid()
+    def update_lanes(self, lines):
+        lines_l, lines_r = self._split_lines(lines)
+        self._lane_l = Lane(lines_l)
+        self._lane_r = Lane(lines_r)
+        self._check_if_valid()
 
-    def check_if_valid(self):
-        if self.lane_l.exist and self.lane_r.exist and abs(self.lane_r.calculate_intersection_Y(self.window[1])
-                                                           - self.lane_l.calculate_intersection_Y(self.window[1])) \
-                                                            < self.window[0] / 2:
-            self.lane_l.clear()
-            self.lane_r.clear()
+    def _check_if_valid(self):
+        if self._lane_l.exist() and self._lane_r.exist() and \
+               abs(self._lane_r.calculate_intersection_y(self._window[1])
+                   - self._lane_l.calculate_intersection_y(self._window[1])) < self._window[0] / 2:
+            self._lane_l.clear()
+            self._lane_r.clear()
 
     def calculate_intersection(self):
-        old_y = self.point_intersection[1]
-        if not (self.lane_l.exist and self.lane_r.exist):
+        old_y = self._point_intersection[1]
+        if not (self._lane_l.exist() or self._lane_r.exist()):
             return None
-        if not self.lane_l.exist:
-            return [int((old_y - self.lane_r.b) / self.lane_r.a), old_y]
-        if not self.lane_r.exist:
-            return [int((old_y - self.lane_l.b) / self.lane_l.a), old_y]
+        if not self._lane_l.exist():
+            return [int((old_y - self._lane_r.b) / self._lane_r.a), old_y]
+        if not self._lane_r.exist():
+            return [int((old_y - self._lane_l.b) / self._lane_l.a), old_y]
 
-        x = (self.lane_r.b - self.lane_l.b) / (self.lane_l.a - self.lane_r.a)
-        y = self.lane_l.a * x + self.lane_l.b
+        x = (self._lane_r.b - self._lane_l.b) / (self._lane_l.a - self._lane_r.a)
+        y = self._lane_l.a * x + self._lane_l.b
         # print("ok", int(x), int(y))
-        self.point_intersection = [int(x), int(y)]
+        self._point_intersection = [int(x), int(y)]
         return [int(x), int(y)]
+
+    def get_lanes(self):
+        return self._lane_l, self._lane_r
+
 
 class Lane:
     def __init__(self, lines):
         if not lines:
             self.a = self.b = None
         else:
-            self.a, self.b = self.filter_lines(lines)
+            self.a, self.b = self._filter_lines(lines)
 
-    def filter_lines(self, lines):
+    def _filter_lines(self, lines):
         slopes = []
         interceptions = []
         for line in lines:
@@ -81,7 +85,6 @@ class Lane:
     def clear(self):
         self.a = self.b = None
 
-    @property
     def exist(self):
         if self.a and self.b:
             return True
@@ -103,8 +106,18 @@ class Lane:
 
         return slope, interception
 
-    def calculate_intersection_Y(self, y):
+    def calculate_intersection_y(self, y):
         if not self.a or not self.b:
             return None
         x = (y - self.b) / self.a
         return x
+
+    def calculate_coords(self, y_top, y_bottom):
+        if not self.exist():
+            return [0, 0, 0, 0]
+        y1 = int(y_top - y_bottom)
+        x1 = int((y1 - self.b) / self.a)
+        y2 = y_top
+        x2 = int((y2 - self.b) / self.a)
+
+        return [x1, y1, x2, y2]
