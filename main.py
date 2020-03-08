@@ -23,7 +23,7 @@ def keyboard_acc(key, power):
     time.sleep(0.01)
 
 
-def control(conn, fun):
+def control(conn, handler):
     key = None
     power = 1
     while True:
@@ -34,7 +34,7 @@ def control(conn, fun):
             key = rcv[0]
             power = rcv[1]
         elif key:
-            fun(key, power)
+            handler(key, power)
         else:
             time.sleep(0.01)
 
@@ -54,12 +54,13 @@ if __name__ == '__main__':
 
     conn_ctrl_child, conn_ctrl_parent = Pipe(duplex=False)
     p_control = Process(target=control, args=(conn_ctrl_child, keyboard_ctrl))
-    # p_control.start()
+    p_control.start()
 
     conn_acc_child, conn_acc_parent = Pipe(duplex=False)
     p_acc = Process(target=control, args=(conn_acc_child, keyboard_ctrl))
-    # p_acc.start()
-    # conn_acc_parent.send(['w', 3])
+    p_acc.start()
+    # TODO: add support for speed control
+    conn_acc_parent.send(['w', 3])
 
     image_processor = ImageProcessor(windowX, windowY)
     minimap = Minimap(image_processor.get_image(), ((20, int(windowY * 3 / 4)), (int(windowX / 4), windowY - 20)))

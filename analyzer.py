@@ -5,6 +5,7 @@ import cv2
 class Analyzer:
     minimap_control = False
     minimap_dif = 0
+    distance = 0
 
     def __init__(self, image_processor, minimap, aim, thresh_x):
         self.image_processor = image_processor
@@ -22,7 +23,7 @@ class Analyzer:
         hough = self.image_processor.get_lines(image)
         if type(hough) is not np.ndarray:
             self.distance = 0
-            return 0
+            return self.distance
 
         self.lanes.update_lanes(hough)
         lane_l, lane_r = self.lanes.get_lanes()
@@ -80,7 +81,7 @@ class Analyzer:
                 self.point = self.point_zero
 
         self.distance = distance
-        return distance
+        return self.distance
 
     def draw(self, image):
         image = image.copy()
