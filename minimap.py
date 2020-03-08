@@ -36,10 +36,10 @@ class Minimap:
     def get_direction(self, image):
         img_cropped = self.img_crop(image)
         img_map = self.process_image(img_cropped)
-
-        up = bool(img_map[ self.y - 10, self.x])
-        left = bool(np.nonzero(img_map[self.y-5:self.y+5, self.x-10])[0].size)
-        right = bool(np.nonzero(img_map[self.y-5:self.y+5, self.x+10])[0].size)
+        # print(np.nonzero(img_map[self.y-2:self.y+2, self.x-10])[0].size, 'left')
+        up = bool(np.nonzero(img_map[ self.y - 12, self.x-2:self.x+2])[0].size)
+        left = bool(np.nonzero(img_map[self.y-2:self.y+2, self.x-10])[0].size)
+        right = bool(np.nonzero(img_map[self.y-2:self.y+2, self.x+10])[0].size)
 
         return (left, up, right)
 
@@ -61,7 +61,7 @@ class Minimap:
         cv2.line(img, (x, y), (x, self.top), [0, 225, 0], 1)
         cv2.line(img, (x + 2, y), (x + 2, self.top), [0, 150, 0], 1)
 
-        cv2.line(img, (self.left, y-10), (self.right, y-10), [0, 0, 150], 1)
+        cv2.line(img, (self.left, y-12), (self.right, y-15), [0, 0, 150], 1)
 
         cv2.rectangle(img, (x - 2, y - 2), (x + 2, y + 2), (225, 0, 0), -1)
         # cv2.line()

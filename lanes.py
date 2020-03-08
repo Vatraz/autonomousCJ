@@ -36,6 +36,7 @@ class Lanes:
             self._lane_l.clear()
             self._lane_r.clear()
 
+
     def calculate_intersection(self):
         old_y = self._point_intersection[1]
         if not (self._lane_l.exist() or self._lane_r.exist()):
@@ -111,6 +112,12 @@ class Lane:
             return None
         x = (y - self.b) / self.a
         return x
+
+    def calculate_intersection_x(self, x):
+        if not self.a or not self.b:
+            return None
+        y = self.b + self.a*x
+        return y
 
     def calculate_coords(self, y_top, y_bottom):
         if not self.exist():

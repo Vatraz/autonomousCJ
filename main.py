@@ -8,6 +8,8 @@ import time
 import keyboard
 import functools
 
+from multiprocessing import Pipe, Process
+
 from minimap import Minimap
 from lanes import Lanes
 
@@ -18,8 +20,7 @@ aimX = int(windowX/2)
 thresholdX = 20
 
 forward = 'w'
-direction = None
-direction_pow = 1
+
 
 
 def region_of_interest(edges):
@@ -84,6 +85,7 @@ def accelerate_thread():
 
 
 def control_thread():
+    t = time.time()
     while True:
         key = direction
         if not key:
@@ -93,22 +95,61 @@ def control_thread():
         time.sleep(0.01*direction_pow)
         keyboard.release(key)
         time.sleep(0.02)
+        print(time.time() - t)
+        t = time.time()
+
+def test(conn):
+    # time.sleep(1)
+    key = None
+    pow = 1
+    # t = time.time()
+    while True:
+        if conn.poll():
+            rcv = conn.recv()
+            key = rcv[0]
+            pow = rcv[1]
+        elif key:
+            keyboard.press(key)
+            time.sleep(0.01 * pow)
+            keyboard.release(key)
+            time.sleep(0.01)
+        else:
+            time.sleep(0.01)
+        # # keyboard.press('a')
+        # time.sleep(0.01)
+        # # keyboard.release('a')
+        # tt = time.time()
+        # # print(tt - t)
+        # t = time.time()
 
 
 if __name__ == '__main__':
-    point = [aimX, horizonY]
+    point_zero = [aimX, horizonY]
+    point = point_zero
+    direction = None
+    direction_pow = 1
+
     keyboard.wait('g')
     # t_forward = threading.Thread(target=accelerate_thread)
     # t_forward.start()
 
-    t_control = threading.Thread(target=control_thread)
+    # t_control = threading.Thread(target=control_thread)
+    # t_control.start()
+
+    conn_child, conn_parent = Pipe(duplex=False)
+    t_control = threading.Thread(target=test, args=(conn_child,))
     t_control.start()
+
+
+    print('hihi')
 
     minimap = None
     lanes = Lanes((windowX, windowY))
     minimap_control = False
     minimap_dif = 0
 
+    sent_key = None
+    sent_pow = None
 
     while True:
 
@@ -127,54 +168,85 @@ if __name__ == '__main__':
         hough = cv2.HoughLinesP(prt_crop, 1, np.pi / 180, 100, minLineLength=150, maxLineGap=70)
 
         if type(hough) is not np.ndarray:
+            cv2.imshow("UDA CI SIE CJ", cv2.cvtColor(prt_scr, cv2.COLOR_BGR2RGB))
             continue
 
         lanes.update_lanes(hough)
         lane_l, lane_r = lanes.get_lanes()
 
         point_candidate = lanes.calculate_intersection()
-        if point_candidate and point_candidate[1] < horizonY*1.5:
+
+        if point_candidate and point_candidate[1] < int(horizonY*1.2) \
+                and point_candidate:
             point = point_candidate
+        else:
+            pass
+            # point = point_zero
+
 
         minimap_direction = minimap.get_direction(prt_scr)
         difference = point[0] - aimX
+
         if lane_l.exist():
-            if lane_l.a < -0.65 or lane_l.calculate_intersection_y(windowY) > 100:
-                difference += thresholdX
+            if lane_l.a < -0.65 or lane_l.calculate_intersection_y(windowY) > 0:
+                print('korekto -> R', time.time())
+                if lane_r.exist():
+                    difference += thresholdX
+                else:
+                    difference = thresholdX
         if lane_r.exist():
-            if lane_r.a > 0.65 or lane_r.calculate_intersection_y(windowY) < 700:
-                difference -= thresholdX
+            if lane_r.a > 0.65 or lane_r.calculate_intersection_y(windowY) < windowX:
+                print('korekto <- L', time.time())
+                if lane_l.exist():
+                    difference -= thresholdX
+                else:
+                    difference = -thresholdX
+
+        if lane_l.exist() and lane_r.exist() and lane_r.calculate_intersection_x(windowX) < int(windowY*7/8):
+            print('L - b too small')
+            difference = 0
+        if lane_r.exist() and lane_l.exist()and lane_r.calculate_intersection_x(0) < int(windowY*7/8):
+            print('R - b too small')
+            difference = 0
 
         # if T junction
-        if not(lane_l.exist() or lane_r.exist()) and not minimap_direction[1]:
-            print("PROBLEM", time.time())
+        if not (lane_l.exist() or lane_r.exist()) and not minimap_direction[1]:
+            # print("PROBLEM", time.time()  )
             if not minimap_control:
-                if minimap_direction[0]:
-                    difference = -3*thresholdX
+                if not (minimap_direction[0] or minimap_direction[1]):
+                    pass
+                elif minimap_direction[0]:
+                    minimap_dif = -1*thresholdX
+                    minimap_control = True
                 elif minimap_direction[2]:
-                    difference = 3*thresholdX
-                minimap_dif = difference
-                minimap_control = True
+                    minimap_dif = 3*thresholdX
+                    minimap_control = True
+
         if minimap_control:
+            print('MAP', time.time())
             if not (lane_l.exist() or lane_r.exist()):
                 difference = minimap_dif
-            elif minimap_direction[2]:
+            elif minimap_direction[2] or (lane_l.exist() and lane_r.exist()):
+                difference = 0
                 minimap_control = False
+                point = [aimX, horizonY]
 
-        if abs(difference) > thresholdX:
+        if abs(difference) >= thresholdX:
             if difference > 0:
                 direction = 'd'
             else:
                 direction = 'a'
             power_sw = abs(difference)/thresholdX
-            if power_sw >= 3:
-                direction_pow = 3
-            elif power_sw >= 2:
+            if power_sw >= 4:
                 direction_pow = 2
             else:
-                direction_pow = 1
+                direction_pow =1
         else:
             direction = None
+
+        if sent_key != direction or sent_pow != direction_pow:
+            conn_parent.send([direction, direction_pow])
+            sent_key, sent_pow = direction, direction_pow
 
         # print(difference)
         coords_l = lane_l.calculate_coords(windowY, horizonY)
