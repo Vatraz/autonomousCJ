@@ -2,7 +2,7 @@ import cv2
 import time
 import keyboard
 
-from multiprocessing import Pipe, Process
+from multiprocessing import Pipe, Process, connection
 
 from image import ImageProcessor
 from minimap import Minimap
@@ -18,12 +18,18 @@ def keyboard_ctrl(key, power):
 
 def keyboard_acc(key, power):
     keyboard.press(key)
-    time.sleep(0.01 * power)
+    time.sleep(0.02 * power)
     keyboard.release(key)
     time.sleep(0.01)
 
 
-def keyboard_proc(conn, handler):
+def keyboard_proc(conn: connection, handler: function):
+    """
+    Supports simulation of keystrokes, depending on commands received from the connection object.
+
+    :param conn: Connection objects that receives instruction list [key, power]
+    :param handler: Performs keystrokes based on the values of the instruction list
+    """
     key = None
     power = 1
     while True:
@@ -57,7 +63,7 @@ if __name__ == '__main__':
     p_keyboard_proc.start()
 
     conn_acc_child, conn_acc_parent = Pipe(duplex=False)
-    p_acc = Process(target=keyboard_proc, args=(conn_acc_child, keyboard_ctrl))
+    p_acc = Process(target=keyboard_proc, args=(conn_acc_child, keyboard_acc))
     p_acc.start()
     # TODO: add support for speed keyboard_proc
     conn_acc_parent.send(['w', 3])
