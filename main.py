@@ -23,7 +23,7 @@ def keyboard_acc(key, power):
     time.sleep(0.01)
 
 
-def keyboard_proc(conn: connection, handler: function):
+def keyboard_proc(conn, handler):
     """
     Supports simulation of keystrokes, depending on commands received from the connection object.
 
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     p_acc = Process(target=keyboard_proc, args=(conn_acc_child, keyboard_acc))
     p_acc.start()
     # TODO: add support for speed keyboard_proc
-    conn_acc_parent.send(['w', 3])
+    conn_acc_parent.send(['w', 1])
 
     image_processor = ImageProcessor(windowX, windowY)
     minimap = Minimap(image_processor.get_image(), ((20, int(windowY * 3 / 4)), (int(windowX / 4), windowY - 20)))
