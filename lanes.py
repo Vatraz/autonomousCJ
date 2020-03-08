@@ -1,9 +1,9 @@
 import statistics
-import cv2
+
 
 class Lanes:
     def __init__(self, window):
-        self._lane_l = self._lane_r = None
+        self._lane_l = self._lane_r = Lane(None, None, None)
         self._window = window
         self._point_intersection = [int(window[0]/2), int(window[1]/2)]
         pass
@@ -25,8 +25,8 @@ class Lanes:
 
     def update_lanes(self, lines):
         lines_l, lines_r = self._split_lines(lines)
-        self._lane_l = Lane(lines_l)
-        self._lane_r = Lane(lines_r)
+        self._lane_l = Lane(lines_l, self._lane_l.a, self._lane_l.b)
+        self._lane_r = Lane(lines_r, self._lane_r.a, self._lane_r.b)
         self._check_if_valid()
 
     def _check_if_valid(self):
@@ -35,7 +35,6 @@ class Lanes:
                    - self._lane_l.calculate_intersection_y(self._window[1])) < self._window[0] / 2:
             self._lane_l.clear()
             self._lane_r.clear()
-
 
     def calculate_intersection(self):
         old_y = self._point_intersection[1]
@@ -57,11 +56,16 @@ class Lanes:
 
 
 class Lane:
-    def __init__(self, lines):
+    def __init__(self, lines, prv_a, prv_b):
         if not lines:
             self.a = self.b = None
         else:
             self.a, self.b = self._filter_lines(lines)
+
+            if prv_a and abs(self.a - prv_a) < 0.1:
+                self.a = self.a - (self.a - prv_a)*0.4
+            if prv_b and abs(self.b - prv_b) < 10:
+                self.b = self.b - (self.b - prv_b)*0.4
 
     def _filter_lines(self, lines):
         slopes = []
