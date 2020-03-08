@@ -23,7 +23,7 @@ def keyboard_acc(key, power):
     time.sleep(0.01)
 
 
-def control(conn, handler):
+def keyboard_proc(conn, handler):
     key = None
     power = 1
     while True:
@@ -53,22 +53,22 @@ if __name__ == '__main__':
     keyboard.wait('g')
 
     conn_ctrl_child, conn_ctrl_parent = Pipe(duplex=False)
-    p_control = Process(target=control, args=(conn_ctrl_child, keyboard_ctrl))
-    p_control.start()
+    p_keyboard_proc = Process(target=keyboard_proc, args=(conn_ctrl_child, keyboard_ctrl))
+    p_keyboard_proc.start()
 
     conn_acc_child, conn_acc_parent = Pipe(duplex=False)
-    p_acc = Process(target=control, args=(conn_acc_child, keyboard_ctrl))
+    p_acc = Process(target=keyboard_proc, args=(conn_acc_child, keyboard_ctrl))
     p_acc.start()
-    # TODO: add support for speed control
+    # TODO: add support for speed keyboard_proc
     conn_acc_parent.send(['w', 3])
 
     image_processor = ImageProcessor(windowX, windowY)
     minimap = Minimap(image_processor.get_image(), ((20, int(windowY * 3 / 4)), (int(windowX / 4), windowY - 20)))
-    analyzer = Analyzer(image_processor, minimap, [aimX, aimY], thresholdX)
+    analyzer = Analyzer(image_processor, minimap, [aimX, aimY])
 
     while True:
         prt_scr = image_processor.get_image()
-        difference = analyzer.get_distance_to_aim(prt_scr)
+        difference = analyzer.get_distance_to_aim(prt_scr, thresholdX)
 
         if abs(difference) >= thresholdX:
             if difference > 0:
@@ -87,15 +87,15 @@ if __name__ == '__main__':
             conn_ctrl_parent.send([direction, direction_pow])
             sent_key, sent_pow = direction, direction_pow
 
-        cv2.imshow("lanes", cv2.cvtColor(analyzer.draw(prt_scr), cv2.COLOR_BGR2RGB))
+        cv2.imshow("lanes", cv2.cvtColor(analyzer.draw(prt_scr, thresholdX), cv2.COLOR_BGR2RGB))
         cv2.imshow("map", cv2.cvtColor(minimap.draw(prt_scr), cv2.COLOR_BGR2RGB))
 
         if cv2.waitKey(25) & 0xFF == ord('q') or keyboard.is_pressed('u'):
             cv2.destroyAllWindows()
             conn_ctrl_parent.send('END')
             conn_acc_parent.send('END')
-            if p_control.is_alive():
-                p_control.join()
+            if p_keyboard_proc.is_alive():
+                p_keyboard_proc.join()
             if p_acc.is_alive():
                 p_acc.join()
             break
