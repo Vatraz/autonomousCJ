@@ -40,7 +40,6 @@ class ImageProcessor:
 
         cv2.fillPoly(mask, polygon, 255)
         cropped_img = cv2.bitwise_and(img, mask)
-        cv2.imshow('EHH', cropped_img)
         return cropped_img
 
     def get_lines(self, img: np.ndarray) -> np.ndarray:
