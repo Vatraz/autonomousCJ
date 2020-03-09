@@ -1,107 +1,107 @@
 import cv2
 import time
-import keyboard
 
-from multiprocessing import Pipe, Process, connection
+from pynput.keyboard import Key, Controller, Listener
+from threading import Thread
+
 
 from image import ImageProcessor
 from minimap import Minimap
 from analyzer import Analyzer
 
 
-def keyboard_ctrl(key, power):
+keyboard = Controller()
+key_hold = False
+
+
+def press_thread(key, power):
     keyboard.press(key)
-    time.sleep(0.01 * power)
+    time.sleep(power*0.1)
     keyboard.release(key)
-    time.sleep(0.01 * power)
 
 
-def keyboard_acc(key, power):
+def hold_thread(key):
+    global key_hold
+    print('pressed', key, key_hold)
     keyboard.press(key)
-    time.sleep(0.02 * power)
+    while key_hold:
+        time.sleep(0.005)
     keyboard.release(key)
-    time.sleep(0.01)
+    print('released', key)
 
 
-def keyboard_proc(conn, handler):
-    """
-    Supports simulation of keystrokes, depending on commands received from the connection object.
+def press_key(key, power):
+    thread = Thread(target=press_thread, args=(key, power))
+    thread.start()
+    
 
-    :param conn: Connection objects that receives instruction list [key, power]
-    :param handler: Performs keystrokes based on the values of the instruction list
-    """
-    key = None
-    power = 1
-    while True:
-        if conn.poll():
-            rcv = conn.recv()
-            if rcv == 'END':
-                break
-            key = rcv[0]
-            power = rcv[1]
-        elif key:
-            handler(key, power)
-        else:
-            time.sleep(0.01)
+def hold_key(key):
+    global key_hold
+    key_hold = True
+    thread = Thread(target=hold_thread, args=(key, ))
+    thread.start()
 
 
 if __name__ == '__main__':
-    windowX, windowY = 800, 600
-    aimX, aimY = int(windowX / 2), int(windowY / 2)
-    thresholdX = 20
+    window_x, window_y = 800, 600
+    aimX, aimY = int(window_x / 2), int(window_y / 2)
+    threshold_x = 20
 
     direction = None
     direction_pow = 1
-    sent_key = None
-    sent_pow = None
+
+    direction_prev = None
 
     # wait to start
-    keyboard.wait('g')
+    with Listener(
+            on_press=lambda x: x,
+            on_release=lambda x: False) as listener:
+        listener.join()
 
-    conn_ctrl_child, conn_ctrl_parent = Pipe(duplex=False)
-    p_keyboard_proc = Process(target=keyboard_proc, args=(conn_ctrl_child, keyboard_ctrl))
-    p_keyboard_proc.start()
-
-    conn_acc_child, conn_acc_parent = Pipe(duplex=False)
-    p_acc = Process(target=keyboard_proc, args=(conn_acc_child, keyboard_acc))
-    p_acc.start()
     # TODO: add support for speed keyboard_proc
-    conn_acc_parent.send(['w', 1])
-
-    image_processor = ImageProcessor(windowX, windowY)
-    minimap = Minimap(image_processor.get_image(), ((20, int(windowY * 3 / 4)), (int(windowX / 4), windowY - 20)))
+    image_processor = ImageProcessor(window_x, window_y)
+    minimap = Minimap(image_processor.get_image(), ((20, int(window_y * 3 / 4)), (int(window_x / 4), window_y - 20)))
     analyzer = Analyzer(image_processor, minimap, [aimX, aimY])
 
     while True:
         prt_scr = image_processor.get_image()
-        difference = analyzer.get_distance_to_aim(prt_scr, thresholdX)
+        difference = analyzer.get_distance_to_aim(prt_scr, threshold_x)
 
-        if abs(difference) >= thresholdX:
+        if abs(difference) >= threshold_x:
             if difference > 0:
                 direction = 'd'
             else:
                 direction = 'a'
-            power_sw = abs(difference)/thresholdX
-            if power_sw >= 4:
+            power_sw = abs(difference)/threshold_x
+            if power_sw >= 8:
+                direction_pow = 4
+            elif power_sw >= 5:
+                direction_pow = 3
+            elif power_sw >= 3:
                 direction_pow = 2
             else:
                 direction_pow = 1
         else:
             direction = None
+            direction_pow = 1
 
-        if sent_key != direction or sent_pow != direction_pow:
-            conn_ctrl_parent.send([direction, direction_pow])
-            sent_key, sent_pow = direction, direction_pow
+        if direction_pow != 4 or direction != direction_prev:
+            key_hold = False
+            direction_prev = None
+        if direction and direction_pow != 4:
+            press_key(direction, direction_pow)
+        elif direction and direction_prev != direction and direction_pow == 4:
+            direction_prev = direction
+            arrow = Key.left if direction == 'a' else Key.right
+            hold_key(arrow)
 
-        cv2.imshow("lanes", cv2.cvtColor(analyzer.draw(prt_scr, thresholdX), cv2.COLOR_BGR2RGB))
+        cv2.imshow("lanes", cv2.cvtColor(analyzer.draw(prt_scr, threshold_x), cv2.COLOR_BGR2RGB))
         cv2.imshow("map", cv2.cvtColor(minimap.draw(prt_scr), cv2.COLOR_BGR2RGB))
 
-        if cv2.waitKey(25) & 0xFF == ord('q') or keyboard.is_pressed('u'):
+        if cv2.waitKey(25) & 0xFF == ord('q'):
             cv2.destroyAllWindows()
-            conn_ctrl_parent.send('END')
-            conn_acc_parent.send('END')
-            if p_keyboard_proc.is_alive():
-                p_keyboard_proc.join()
-            if p_acc.is_alive():
-                p_acc.join()
+            # if p_keyboard_proc.is_alive():
+            #     p_keyboard_proc.join()
+            # if p_acc.is_alive():
+            #     p_acc.join()
             break
