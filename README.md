@@ -12,9 +12,6 @@ As the system is in a very early stage of development, implemented control algor
 being perfect. Several problems make detection of characteristic elements on the roads hard, i.e. low-resolution 
 textures, blocky shapes of the roads, changing in-game lightning.  
 
-Besides that, for now, I've decided not to use any neural network related algorithms because of my curiosity about how good or 
-bad this system can be without using the most obvious solution to the problem. 
-
 ## Instalation
 
 1. ```git clone https://github.com/Vatraz/autonomousCJ.git```
@@ -26,5 +23,5 @@ bad this system can be without using the most obvious solution to the problem.
 
 ## Usage
 
-Run the script ```python main.py``` with GTA:SA running in a window mode in 800x600 resolution and placed in the top-left corner of the screen. Then it is necessary to get into any car, toggle camera to the bumper cam and drive 
+Run the script ```python main.py``` with GTA:SA running in a window mode in 800x600 resolution and placed in the top-left corner of the screen. Then get into any car, toggle camera to the bumper cam and drive 
 to any road in the position that will be maintained by algorithm. After that, press "G" to start.
