@@ -26,6 +26,5 @@ bad this system can be without using the most obvious solution to the problem.
 
 ## Usage
 
-With GTA:SA running in a window mode in 800x600 resolution and placed in the top-left corner of the screen, running the script 
-```python main.py``` will start the program. Then it is necessary to get into any car, toggle camera to the bumper cam and drive 
-to any road in the position that will be maintained by algorithm. After that, pressing "G" will start the algorithm.
+Run the script ```python main.py``` with GTA:SA running in a window mode in 800x600 resolution and placed in the top-left corner of the screen. Then it is necessary to get into any car, toggle camera to the bumper cam and drive 
+to any road in the position that will be maintained by algorithm. After that, press "G" to start.
