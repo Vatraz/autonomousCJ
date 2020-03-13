@@ -10,7 +10,7 @@ center of the road as possible.
 
 As the system is in a very early stage of development, implemented control algorithm and road detection are far from 
 being perfect. Several problems make detection of characteristic elements on the roads hard, i.e. low-resolution 
-textures, blocky shapes of the roads, changing in-game lightning.  
+textures, blocky shape of the roads and constantly changing lighting.  
 
 ## Instalation
 
@@ -18,8 +18,8 @@ textures, blocky shapes of the roads, changing in-game lightning.
 2. ```cd autonomousCJ/```
 3. ```virtualenv venv```
 4. ```source venv/bin/activate```
-5. ```pip3 install -r requirements.txt```
-6. ```python3 main.py```
+5. ```pip install -r requirements.txt```
+6. ```python main.py```
 
 ## Usage
 
