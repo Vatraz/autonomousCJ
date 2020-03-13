@@ -47,32 +47,32 @@ class Analyzer:
             pass
 
         distance = self.point[0] - self.aimX
+
+        if lane_l.exist() and lane_r.exist():
+            if (lane_r.calculate_intersection_x(window_x) < int(window_y*7/8)) \
+                    ^ (lane_l.calculate_intersection_x(0) < int(window_y*7/8)):
+                distance = 0
+        elif lane_r.exist() and lane_r.calculate_intersection_x(window_x) < int(window_y * 7/8):
+            distance += thresh_x
+        elif lane_l.exist() and lane_l.calculate_intersection_x(window_x) < int(window_y * 7/8):
+            distance -= thresh_x
+
         if lane_l.exist():
             if lane_l.a < -0.65 or lane_l.calculate_intersection_y(window_y) > 0:
-                # print('-> R', time.time())
                 if lane_r.exist():
                     distance += thresh_x
                 else:
-                    distance = thresh_x
+                    distance += thresh_x
         if lane_r.exist():
             if lane_r.a > 0.65 or lane_r.calculate_intersection_y(window_y) < window_x:
-                # print('<- L', time.time())
                 if lane_l.exist():
                     distance -= thresh_x
                 else:
-                    distance = -thresh_x
-
-        if lane_l.exist() and lane_r.exist() and lane_r.calculate_intersection_x(window_x) < int(window_y*7/8):
-            # print('L - b too small')
-            distance = 0
-        if lane_r.exist() and lane_l.exist()and lane_r.calculate_intersection_x(0) < int(window_y*7/8):
-            # print('R - b too small')
-            distance = 0
+                    distance += -thresh_x
 
         # if T junction
         minimap_direction = self.minimap.get_direction(image)
         if not (lane_l.exist() or lane_r.exist()) and not minimap_direction[1]:
-            # print("PROBLEM", time.time()  )
             if not self.minimap_control:
                 if not (minimap_direction[0] or minimap_direction[1]):
                     pass
