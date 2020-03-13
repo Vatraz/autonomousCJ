@@ -37,7 +37,7 @@ class Minimap:
         img_cropped = self.img_crop(image)
         img_map = self.process_image(img_cropped)
         # print(np.nonzero(img_map[self.y-2:self.y+2, self.x-10])[0].size, 'left')
-        up = bool(np.nonzero(img_map[self.y - 12, self.x-3:self.x+3])[0].size)
+        up = bool(np.nonzero(img_map[self.y - 12:self.y-8, self.x-3:self.x+3])[0].size)
         left = bool(np.nonzero(img_map[self.y-2:self.y+4, self.x-10])[0].size)
         right = bool(np.nonzero(img_map[self.y-2:self.y+4, self.x+10])[0].size)
 
