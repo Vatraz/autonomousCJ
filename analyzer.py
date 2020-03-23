@@ -1,4 +1,4 @@
-from lanes import Lanes
+from process_image.lanes import Lanes
 import numpy as np
 import cv2
 

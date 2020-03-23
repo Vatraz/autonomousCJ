@@ -5,8 +5,8 @@ from pynput.keyboard import Key, Controller, Listener
 from threading import Thread
 
 
-from image import ImageProcessor
-from minimap import Minimap
+from process_image.image import ImageProcessor
+from process_image.minimap import Minimap
 from analyzer import Analyzer
 
 
