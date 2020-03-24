@@ -12,7 +12,7 @@ As the system is in a very early stage of development, implemented control algor
 being perfect. Several problems make detection of characteristic elements on the roads hard, i.e. low-resolution 
 textures, blocky shape of the roads and constantly changing lighting.  
 
-![GIF](https://media.giphy.com/media/Pj0RQshX5jLarzB21k/giphy.gif)
+![](https://i.giphy.com/media/du9ToRsAktWAhn8lQ7/source.gif)
 
 ## Instalation
 
