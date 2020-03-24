@@ -12,6 +12,8 @@ As the system is in a very early stage of development, implemented control algor
 being perfect. Several problems make detection of characteristic elements on the roads hard, i.e. low-resolution 
 textures, blocky shape of the roads and constantly changing lighting.  
 
+![GIF](https://media.giphy.com/media/Pj0RQshX5jLarzB21k/giphy.gif)
+
 ## Instalation
 
 1. ```git clone https://github.com/Vatraz/autonomousCJ.git```
