@@ -11,8 +11,7 @@ center of the road as possible.
 As the system is in a very early stage of development, implemented control algorithm and road detection are far from 
 being perfect. Several problems make detection of characteristic elements on the roads hard, i.e. low-resolution 
 textures, blocky shape of the roads and constantly changing lighting.  
-
-![](https://i.giphy.com/media/du9ToRsAktWAhn8lQ7/source.gif)
+[![](https://i.postimg.cc/DwPbN8fr/screenshot-from-2020-03-30-04.jpg)](https://youtu.be/FfvnZxzQvY4)
 
 ## Instalation
 
@@ -26,4 +25,4 @@ textures, blocky shape of the roads and constantly changing lighting.
 ## Usage
 
 Run the script ```python main.py``` with GTA:SA running in a window mode in 800x600 resolution and placed in the top-left corner of the screen. Then get into any car, toggle camera to the bumper cam and drive 
-to any road in the position that will be maintained by algorithm. After that, press "G" to start.
+to a road in the position that will be maintained by algorithm. After that, press the spacebar to start.
