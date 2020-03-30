@@ -6,9 +6,15 @@ class Lanes:
         self._lane_l = self._lane_r = Lane(None, None, None)
         self._window = window
         self._point_intersection = [int(window[0]/2), int(window[1]/2)]
-        pass
 
     def _split_lines(self, lines):
+        """
+        Split lines to two subsets. One containing lines that are likely to be the left lane, and second containing
+        lines that describe the lane on the right.
+
+        :param lines: list of lines
+        :return: left lane lines, right lane lines
+        """
         slope_min = 0.2
         selected_left = []
         selected_right = []
@@ -24,12 +30,20 @@ class Lanes:
         return selected_left, selected_right
 
     def update_lanes(self, lines):
+        """
+        Updates both lanes based of the list of detected lines.
+
+        :param lines: list of lines
+        """
         lines_l, lines_r = self._split_lines(lines)
         self._lane_l = Lane(lines_l, self._lane_l.a, self._lane_l.b)
         self._lane_r = Lane(lines_r, self._lane_r.a, self._lane_r.b)
-        self._check_if_valid()
+        self._clear_invalid()
 
-    def _check_if_valid(self):
+    def _clear_invalid(self):
+        """
+        Clears lanes with invalid parameters.
+        """
         if self._lane_l.exist() and self._lane_r.exist() and \
                abs(self._lane_r.calculate_intersection_y(self._window[1])
                    - self._lane_l.calculate_intersection_y(self._window[1])) < self._window[0] / 2:
@@ -37,6 +51,12 @@ class Lanes:
             self._lane_r.clear()
 
     def calculate_intersection(self):
+        """
+        Returns an intersection point of lanes. If only one lane was detected, intersection
+        is calculated based on old value of the missing lane. If there is no lane, returns None.
+
+        :return: intersection point (x, y)
+        """
         old_y = self._point_intersection[1]
         if not (self._lane_l.exist() or self._lane_r.exist()):
             return None
@@ -47,11 +67,15 @@ class Lanes:
 
         x = (self._lane_r.b - self._lane_l.b) / (self._lane_l.a - self._lane_r.a)
         y = self._lane_l.a * x + self._lane_l.b
-        # print("ok", int(x), int(y))
         self._point_intersection = [int(x), int(y)]
         return [int(x), int(y)]
 
     def get_lanes(self):
+        """
+        Returns the tuple containing both lanes.
+
+        :return: (left lane, right lane)
+        """
         return self._lane_l, self._lane_r
 
 
@@ -68,6 +92,13 @@ class Lane:
                 self.b = self.b - (self.b - prv_b)*0.4
 
     def _filter_lines(self, lines):
+        """
+        Filters the lines list describing a lane, and returns the values of its a and b parameters
+        (slope, interception).
+
+        :param lines: list of lines
+        :return: a, b
+        """
         slopes = []
         interceptions = []
         for line in lines:
@@ -88,9 +119,17 @@ class Lane:
         return a, b
 
     def clear(self):
+        """
+        Assigns None to the lane a and b parameters.
+        """
         self.a = self.b = None
 
     def exist(self):
+        """
+        Checks if the lane exists, based on its a and b values.
+
+        :return: whether the lane exists
+        """
         if self.a and self.b:
             return True
         else:
@@ -98,6 +137,15 @@ class Lane:
 
     @staticmethod
     def params(x1, y1, x2, y2):
+        """
+        Calculates slope and intersection of lane described by two points: (x1, y1) and (x2, y2).
+
+        :param x1: position of the first point on the X-axis
+        :param y1: position of the first point on the Y-axis
+        :param x2: position of the second point on the X-axis
+        :param y2: position of the second point on the Y-axis
+        :return: slope, interception
+        """
         # Slope
         dx = x2 - x1
         dy = y2 - y1
@@ -112,23 +160,25 @@ class Lane:
         return slope, interception
 
     def calculate_intersection_y(self, y):
+        """
+        Calculate the intersection with the horizontal line crossing the Y-axis at (y, 0).
+
+        :param y: point of the intersection in Y-axis
+        :return: point of the intersection in X-axis
+        """
         if not self.a or not self.b:
             return None
         x = (y - self.b) / self.a
         return x
 
     def calculate_intersection_x(self, x):
+        """
+        Calculate the intersection with the vertical line crossing the Y-axis at (0, x).
+
+        :param x: point of the intersection in X-axis
+        :return: point of the intersection in Y-axis
+        """
         if not self.a or not self.b:
             return None
         y = self.b + self.a*x
         return y
-
-    def calculate_coords(self, y_top, y_bottom):
-        if not self.exist():
-            return [0, 0, 0, 0]
-        y1 = int(y_top - y_bottom)
-        x1 = int((y1 - self.b) / self.a)
-        y2 = y_top
-        x2 = int((y2 - self.b) / self.a)
-
-        return [x1, y1, x2, y2]

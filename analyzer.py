@@ -112,8 +112,8 @@ class Analyzer:
         cv2.line(image, (int(aimX + thresh_x), 0), (int(aimX + thresh_x), window_y), [255, 0, 220], 1)
         cv2.line(image, (int(aimX - thresh_x), 0), (int(aimX - thresh_x), window_y), [255, 0, 220], 1)
 
-        coords_l = lane_l.calculate_coords(window_y, aimY)
-        coords_r = lane_r.calculate_coords(window_y, aimY)
+        coords_l = lane_l.calculate_intersection_y(window_y), lane_l.calculate_intersection_y(aimY)
+        coords_r = lane_r.calculate_intersection_y(window_y), lane_r.calculate_intersection_y(aimY)
         cv2.line(image, (coords_l[0], coords_l[1]), (coords_l[2], coords_l[3]), [0, 225, 0], 5)
         cv2.line(image, (coords_r[0], coords_r[1]), (coords_r[2], coords_r[3]), [255, 0, 0], 5)
 
