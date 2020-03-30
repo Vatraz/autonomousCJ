@@ -9,7 +9,7 @@ The collected information about the car's environment is used to calculate the c
 center of the road as possible.
 
 As the system is in a very early stage of development, implemented control algorithm and road detection are far from 
-being perfect. Several problems make detection of characteristic elements on the roads hard, i.e. low-resolution 
+being perfect. Several problems make detection of characteristic elements of the roads hard, i.e. low-resolution 
 textures, blocky shape of the roads and constantly changing lighting.  
 [![](https://i.postimg.cc/DwPbN8fr/screenshot-from-2020-03-30-04.jpg)](https://youtu.be/FfvnZxzQvY4)
 
