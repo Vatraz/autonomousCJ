@@ -4,6 +4,12 @@ import numpy as np
 
 class Minimap:
     def __init__(self, image, rectangle):
+        """
+        Detects the minimap in the part of the image described by the rectangle.
+
+        :param image: image
+        :param rectangle: part of the image where  the minimap can be located
+        """
         self.rectangle = rectangle
         img = image.copy()
         img = self.img_crop(img)
@@ -34,6 +40,13 @@ class Minimap:
         # ret, thresh = cv2.threshold(gray_blur, 2, 255, cv2.THRESH_BINARY_INV)
 
     def get_direction(self, image):
+        """
+        Returns a 3-element list containing information if there is a road in the specific direction, based on the
+        minimap in the image.
+
+        :param image: image
+        :return: [left, up, right]
+        """
         img_cropped = self.img_crop(image)
         img_map = self.process_image(img_cropped)
         # print(np.nonzero(img_map[self.y-2:self.y+2, self.x-10])[0].size, 'left')
@@ -44,12 +57,25 @@ class Minimap:
         return left, up, right
 
     @staticmethod
-    def process_image(img_cropped):
-        img_gray = cv2.cvtColor(img_cropped, cv2.COLOR_BGR2GRAY)
+    def process_image(image):
+        """
+        Returns an image that can be used for road detection.
+
+        :param image: image
+        :return: processed image copy
+        """
+        image = image.copy()
+        img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(img_gray, 10, 255, cv2.THRESH_BINARY_INV)
         return thresh
 
     def img_crop(self, image):
+        """
+        Returns an image cropped to the shape described by the self.rectangle.
+
+        :param image: image
+        :return: cropped image
+        """
         return image[self.rectangle[0][1]:self.rectangle[1][1], self.rectangle[0][0]:self.rectangle[1][0]]
 
     def draw(self, img):
@@ -64,7 +90,6 @@ class Minimap:
         cv2.line(img, (self.left, y-12), (self.right, y-15), [0, 0, 150], 1)
 
         cv2.rectangle(img, (x - 2, y - 2), (x + 2, y + 2), (225, 0, 0), -1)
-        # cv2.line()
         return img
 
 

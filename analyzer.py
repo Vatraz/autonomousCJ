@@ -74,7 +74,7 @@ class Analyzer:
         minimap_direction = self.minimap.get_direction(image)
         if not (lane_l.exist() or lane_r.exist()) and not minimap_direction[1]:
             if not self.minimap_control:
-                if not (minimap_direction[0] or minimap_direction[1]):
+                if not (minimap_direction[0] or minimap_direction[2]):
                     pass
                 elif minimap_direction[0]:
                     self.minimap_dif = -1 * thresh_x
