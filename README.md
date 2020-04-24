@@ -1,16 +1,12 @@
 # autonomousCJ
 Self-driving car in GTA San Andreas.
 
-Based on rather simple computer vision techniques, autonomusCJ allows the car to navigate the roads in GTA San Andreas 
-by analyzing the location of lanes and edges of the road, as well by extracting information about the roads layout from 
+Based on rather simple computer vision techniques, autonomusCJ analyzes the arrangement of lanes/edges of the road and extracts information about the roads layout from 
 the minimap. 
 
-The collected information about the car's environment is used to calculate the control needed to keep it as close to the 
+The collected information about the car environment is used to calculate the control needed to keep it as close to the 
 center of the road as possible.
 
-As the system is in a very early stage of development, implemented control algorithm and road detection are far from 
-being perfect. Several problems make detection of characteristic elements of the roads hard, i.e. low-resolution 
-textures, blocky shape of the roads and constantly changing lighting.  
 [![](https://i.postimg.cc/DwPbN8fr/screenshot-from-2020-03-30-04.jpg)](https://youtu.be/FfvnZxzQvY4)
 
 ## Instalation
@@ -24,5 +20,4 @@ textures, blocky shape of the roads and constantly changing lighting.
 
 ## Usage
 
-Run the script ```python main.py``` with GTA:SA running in a window mode in 800x600 resolution and placed in the top-left corner of the screen. Then get into any car, toggle camera to the bumper cam and drive 
-to a road in the position that will be maintained by algorithm. After that, press the spacebar to start.
+Run the script ```python main.py``` with GTA:SA running in a window mode in 800x600 resolution and placed in the top-left corner of the screen. Then get into any car, toggle camera to the bumper cam, and press the spacebar to start.
