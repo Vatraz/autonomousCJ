@@ -5,7 +5,6 @@ import cv2
 class Analyzer:
     minimap_control = False
     minimap_dif = 0
-    distance = 0
 
     def __init__(self, image_processor: object, minimap: object, aim: [int, int]) -> object:
         """
@@ -34,41 +33,35 @@ class Analyzer:
         window_x, window_y = self.window_x, self.window_y
         hough = self.image_processor.get_lines(image)
         if type(hough) is not np.ndarray:
-            self.distance = 0
-            return self.distance
+            return 0
 
         self.lanes.update_lanes(hough)
         lane_l, lane_r = self.lanes.get_lanes()
         point_candidate = self.lanes.calculate_intersection()
 
+        # update aim point
         if point_candidate and point_candidate[1] < int(self.aimY*1.2) and point_candidate:
             self.point = point_candidate
-        else:
-            pass
 
+        # calculate distance to aim point
         distance = self.point[0] - self.aimX
 
         if lane_l.exist() and lane_r.exist():
             if (lane_r.calculate_intersection_x(window_x) < int(window_y*7/8)) \
                     ^ (lane_l.calculate_intersection_x(0) < int(window_y*7/8)):
                 distance = 0
-        elif lane_r.exist() and lane_r.calculate_intersection_x(window_x) < int(window_y * 7/8):
-            distance += thresh_x
-        elif lane_l.exist() and lane_l.calculate_intersection_x(window_x) < int(window_y * 7/8):
-            distance -= thresh_x
 
-        if lane_l.exist():
-            if lane_l.a < -0.65 or lane_l.calculate_intersection_y(window_y) > 0:
-                if lane_r.exist():
-                    distance += thresh_x
-                else:
-                    distance += thresh_x
-        if lane_r.exist():
+        elif lane_r.exist():
+            if lane_r.calculate_intersection_x(window_x) < int(window_y * 7/8):
+                distance += thresh_x
             if lane_r.a > 0.65 or lane_r.calculate_intersection_y(window_y) < window_x:
-                if lane_l.exist():
-                    distance -= thresh_x
-                else:
-                    distance += -thresh_x
+                distance -= thresh_x
+
+        elif lane_l.exist():
+            if lane_l.calculate_intersection_x(window_x) < int(window_y * 7/8):
+                distance -= thresh_x
+            if lane_l.a < -0.65 or lane_l.calculate_intersection_y(window_y) > 0:
+                distance += thresh_x
 
         # if T junction
         minimap_direction = self.minimap.get_direction(image)
@@ -84,7 +77,6 @@ class Analyzer:
                     self.minimap_control = True
 
         if self.minimap_control:
-            # print('MAP', time.time())
             if not (lane_l.exist() or lane_r.exist()):
                 distance = self.minimap_dif
             elif minimap_direction[2] or (lane_l.exist() and lane_r.exist()):
@@ -92,8 +84,7 @@ class Analyzer:
                 self.minimap_control = False
                 self.point = self.point_zero
 
-        self.distance = distance
-        return self.distance
+        return distance
 
     def draw(self, image: np.ndarray, thresh_x: int) -> np.ndarray:
         """
