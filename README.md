@@ -20,4 +20,4 @@ center of the road as possible.
 
 ## Usage
 
-Run the script ```python main.py``` with GTA:SA running in a window mode in 800x600 resolution and placed in the top-left corner of the screen. Then get into any car, toggle camera to the bumper cam, and press the spacebar to start.
+Run the script ```main.py``` with GTA:SA running in a window mode in 800x600 resolution and placed in the top-left corner of the screen. Then get into any car, toggle camera to the bumper cam, and press the spacebar to start.
