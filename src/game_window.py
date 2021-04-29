@@ -52,14 +52,14 @@ class GameWindow:
 
         return gta_window
 
-    def find_game_rect(self, screen_image: np.ndarray) -> np.ndarray:
+    def find_game_rect(self) -> np.ndarray:
         """
         Find and update the rectangle that describes the game window area on the screen.
         To work properly, GTA menu must be active.
 
-        :param screen_image: screen image
         :return: rectangle coords array - [x1, y1, x2, y2]
         """
+        screen_image = self.take_screenshot()
         window_rect = np.array(win32gui.GetWindowRect(self.gta_window['hwnd']))
 
         # crop window area from the full screenshot image

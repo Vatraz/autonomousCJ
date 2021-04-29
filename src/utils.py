@@ -1,5 +1,4 @@
 import cv2
-import numpy as np
 
 
 def crop_bounding_box_xywh(image, box):
